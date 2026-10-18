@@ -10,6 +10,7 @@ typedef struct {
     uint8_t video;          /* 0: 50 Hz, 1: 60 Hz */
     uint8_t floppy;         /* 1: the disk ROM (floppy drives) */
     uint8_t joystick;       /* port the keypad joystick is in: 1 or 2 */
+    uint16_t ram_kb;        /* MSX2: the memory mapper, 128 ... 4096 KB (a power of two) */
 } settings_t;
 
 extern settings_t settings;

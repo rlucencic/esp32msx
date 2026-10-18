@@ -1,7 +1,7 @@
 # esp32msx: MSX1 and MSX2 on the Makerfabs MaTouch ESP32-S3 7" and the M5Stack Tab5
 
-An MSX1 (64 KB, TMS9918A/9929A) or MSX2 (512 KB memory mapper, V9938 with
-128 KB VRAM, RP5C01 clock), 50 or 60 Hz: the Z80 on esp32emu's core with the
+An MSX1 (64 KB, TMS9918A/9929A) or MSX2 (a memory mapper of 128 KB to 2 MB,
+the Tab5 to 4 MB; V9938 with 128 KB VRAM, RP5C01 clock), 50 or 60 Hz: the Z80 on esp32emu's core with the
 MSX's M1 wait state, the slots and subslots, the PPI and keyboard, the
 AY-3-8910 with the key click, two floppy drives behind a WD2793 (Philips
 style disk ROM), a Sunrise IDE hard disk with Nextor, and ROM cartridges with
@@ -54,15 +54,15 @@ Console commands: the shared ones (`s` `L` `r` `F` `t` `i` `p`) and the
 MSX's (`main/main.c`): `k <n>` tap a key (row x 8 + column: 63 RETURN, 64
 SPACE), `K <n> 0|1` (48 SHIFT, 49 CTRL, 60 STOP), `T <text>` type (`\n`
 RETURN; a key down 2 frames, up 2), `j <port> <bits>` joystick (1 up 2 down
-4 left 8 right 16 A 32 B), `R <model> [hz]` restart as 0 MSX1, 1 MSX2, at 50
-or 60 Hz. Touches: Start `t 850 532` (MaTouch), `t 1065 637` (Tab5).
+4 left 8 right 16 A 32 B), `R <model> [hz] [KB]` restart as 0 MSX1, 1 MSX2,
+at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touches: Start `t 850 532` (MaTouch), `t 1065 637` (Tab5).
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `main/main.c` | The MSX as an `emu_machine_t`: memory, ROMs, choices (model, video, floppy), key map, joystick, the drives (A:, B:, hard disk, cartridge), status, console |
-| `main/settings.c`, `rom_store.c` | NVS settings (`msx`: model, video, floppy, joystick), the ROM partition |
+| `main/main.c` | The MSX as an `emu_machine_t`: memory, ROMs, choices (model, memory, video, floppy), key map, joystick, the drives (A:, B:, hard disk, cartridge), status, console |
+| `main/settings.c`, `rom_store.c` | NVS settings (`msx`: model, video, floppy, joystick, ram_kb), the ROM partition |
 | `components/msx/msx.c` | Slots and memory, the PPI and keyboard, the I/O ports, the frame loop, typing |
 | `components/msx/vdp.c` | TMS9918A / V9938: all modes, sprites, the V9938's commands |
 | `components/msx/psg.c` | AY-3-8910, SCC, key click: events replayed on the speaker's task |
@@ -83,6 +83,17 @@ or 60 Hz. Touches: Start `t 850 532` (MaTouch), `t 1065 637` (Tab5).
   or a cartridge bank. Slot 0 BIOS, 1 the cartridge, 2 the Sunrise IDE
   (Nextor; only with a hard disk inserted), 3-0 RAM / mapper, 3-1 SUB-ROM,
   3-2 disk ROM.
+- **The mapper's size** (setup screen "Memory", MSX2 only; an MSX1's row is
+  its one 64 KB button: the runtime's `choice_names()`): `reserve_memory()`
+  reserves the chosen size at power-on (as much as fits next to 3 MB for
+  the rest), an MSX1 uses 64 KB of it. A larger size later: `start()`
+  restarts the board, which reserves it first thing. The segment registers
+  read back with the bits above the size set: `PRINT HEX$(INP(&HFC))` in
+  BASIC gives 83 with 2 MB, E3 with 512 KB. The MaTouch stops at 2 MB (3.4
+  MB of its PSRAM free while running with 512 KB; cartridges come out of
+  that).
+- **Floppy Off** leaves the disk ROM out (an MSX without drives): MSX1 BASIC
+  has 28815 bytes free instead of 23430, as some cassette-era programs need.
 - **Timing**: a frame is 262 (60 Hz) or 313 (50 Hz) lines of 228 T-states at
   3.58 MHz. The Z80 gets a wait state on every M1 cycle as the MSX engine
   adds one: counted from the refresh register's advance.
@@ -114,7 +125,8 @@ or 60 Hz. Touches: Start `t 850 532` (MaTouch), `t 1065 637` (Tab5).
 
 ### Persistent state
 
-- NVS `msx`: `model`, `video`, `floppy`, `joystick`; `msxdisks`: the
+- NVS `msx`: `model`, `video`, `floppy`, `joystick`, `ram_kb` (the MSX2's
+  mapper, default 512); `msxdisks`: the
   drives' images. SD card: images in `msx/`.
 
 ## Performance (measured 2026-10-18)
@@ -159,7 +171,10 @@ or 60 Hz. Touches: Start `t 850 532` (MaTouch), `t 1065 637` (Tab5).
 - Checked: MSX1 and MSX2 BASIC, the screen modes and sprites, the V9938's
   commands, floppies (LOAD/SAVE, FILES, new blank disks), Nextor from a
   new hard disk (FAT16, SAVE/FILES), cartridges of each mapper (test ROMs),
-  the SCC and AY sound (recorded on the host), on both boards.
+  the SCC and AY sound (recorded on the host), on both boards. The Memory
+  row (2026-10-18): MSX1 shows its 64 KB, MSX2 the sizes; 2 MB on the
+  MaTouch and 4 MB on the Tab5 restarted the board into an MSX2 with that
+  much, the mapper registers read 83 82 81 80 and 03 02 01 00.
 - **Not checked by hand**: games, a Bluetooth keyboard and joystick on the
   MSX, sound on the speakers.
 

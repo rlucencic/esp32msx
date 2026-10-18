@@ -19,7 +19,7 @@
   <img alt="Nextor BASIC 2.10: a program saved to the hard disk (A:) and a floppy (B:), both listed, 32591 KB and 712 KB free, then run" src="docs/images/nextor.png" width="49%">
   <br>
   <img alt="SCREEN 8: the V9938's 256 colours in a 16 by 16 grid" src="docs/images/screen8.png" width="49%">
-  <img alt="The setup screen: model MSX1 or MSX2, video 50 or 60 Hz, floppy drives off or on; WiFi, Bluetooth, Disks and Start buttons" src="docs/images/setup.png" width="49%">
+  <img alt="The setup screen: model MSX1 or MSX2, the MSX2's memory 128 KB to 2 MB, video 50 or 60 Hz, floppy drives off or on; WiFi, Bluetooth, Disks and Start buttons" src="docs/images/setup.png" width="49%">
   <br>
   <sub>The MSX2 starting; Nextor BASIC with a hard disk and a floppy; SCREEN 8's 256 colours;
   the setup screen. As on the MaTouch's panel, border included.</sub>
@@ -44,9 +44,9 @@ core this one shares with the Amstrad and the Spectrum.
 ## Features
 
 **The machines**
-- **MSX1** (64 KB, TMS9918A, or TMS9929A at 50 Hz) and **MSX2** (512 KB
-  memory mapper, V9938 with 128 KB of VRAM, RP5C01 clock), chosen on the
-  setup screen with **50 or 60 Hz** video
+- **MSX1** (64 KB, TMS9918A, or TMS9929A at 50 Hz) and **MSX2** (a memory
+  mapper of 128 KB to 2 MB, on the Tab5 to 4 MB; V9938 with 128 KB of VRAM,
+  RP5C01 clock), chosen on the setup screen with **50 or 60 Hz** video
 - **Z80** at 3.58 MHz on the shared core, with the wait state the MSX engine
   adds to every M1 cycle
 - **Slots and subslots** as an MSX lays them out: BIOS and BASIC, the
@@ -63,7 +63,11 @@ core this one shares with the Amstrad and the Spectrum.
 **Drives**
 - **Two floppy drives** behind a WD2793, as Philips built the disk interface:
   `.dsk` images (720 KB and 360 KB), read and written in place, new
-  formatted disks on request
+  formatted disks on request. **Floppy Off** leaves the disk interface out,
+  as on an MSX without drives: BASIC starts at once and, without a hard
+  disk, has 28815 bytes free instead of 23430 (the disk ROM keeps its work
+  area at the top of RAM), which some cassette-era programs need. A Nextor
+  hard disk works either way
 - **A hard disk** on a Sunrise IDE interface with **Nextor**: a raw image of
   any size, read and written in place; new ones come with a FAT16 partition
   (32 or 128 MB). With a hard disk in, Nextor starts first: the hard disk is
@@ -74,7 +78,7 @@ core this one shares with the Amstrad and the Spectrum.
 **Around it**
 - **Setup screen** before the MSX starts, and any time while it runs (hold
   the top-right corner for 2 seconds): WiFi, Bluetooth pairing, the model,
-  video, the floppy drives, the drives and cartridge, reset
+  memory, video, the floppy drives, the drives and cartridge, reset
 - **Bluetooth keyboard** (BLE HID)
 - **Web page** at `http://msx.local`: drop disk images, hard disks,
   cartridges or `.ZIP` files onto it, put them into drives, eject, make
@@ -133,8 +137,8 @@ ROMs, you can also copy them into a `roms` folder on the SD card.
 1. The board starts on the **setup screen**. Tap **WiFi** to join your
    network: the web page becomes reachable.
 2. Tap **Bluetooth** to pair a keyboard.
-3. Choose the **model**, the **video** frequency and the **floppy** drives,
-   then tap **Start**: MSX BASIC.
+3. Choose the **model**, the MSX2's **memory**, the **video** frequency and
+   the **floppy** drives, then tap **Start**: MSX BASIC.
 4. Open `http://msx.local`, drop a disk image or a cartridge onto the page,
    then **Insert into…**: a floppy is there at once, a cartridge or a hard
    disk starts the MSX again with it.
@@ -144,7 +148,7 @@ ROMs, you can also copy them into a `roms` folder on the SD card.
 | To | Do |
 |---|---|
 | Get back to the setup screen | Hold the top-right corner of the screen for 2 s |
-| Change the model, video or floppy drives | On the setup screen; **Restart** applies it |
+| Change the model, memory, video or floppy drives | On the setup screen; **Restart** applies it |
 | Play a cartridge | Insert it into **Cartridge** (setup screen's Disks page, or the web page): the MSX starts with it |
 | Use a hard disk | **New** → 32 or 128 MB on the drives page or the web page, insert it into **Hard disk**: Nextor starts with it as A: (in BASIC; Nextor starts its DOS from a disk that has `NEXTOR.SYS` and `COMMAND2.COM` on it) |
 | Load or save a program | `SAVE"A:NAME.BAS"`, `LOAD"A:NAME.BAS"`, `FILES` |

@@ -23,7 +23,24 @@
 
 static const char *TAG = "main";
 
-#define MSX2_RAM_KB     512        /* the memory mapper */
+/* The MSX2's memory mapper: up to 4 MB on the Tab5, 2 MB on the MaTouch
+ * (512 KB leaves 3.4 MB of its PSRAM free while running; a cartridge comes
+ * out of that too)
+ */
+#if CONFIG_IDF_TARGET_ESP32P4
+static const char *const ram_names[] = { "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "4 MB", "" };
+static const uint16_t ram_sizes[] = { 128, 256, 512, 1024, 2048, 4096 };
+#else
+static const char *const ram_names[] = { "128 KB", "256 KB", "512 KB", "1 MB", "2 MB", "" };
+static const uint16_t ram_sizes[] = { 128, 256, 512, 1024, 2048 };
+#endif
+#define RAM_SIZES   (sizeof(ram_sizes) / sizeof(ram_sizes[0]))
+static const char *const ram_names_msx1[] = { "64 KB", "" };
+
+/* PSRAM the rest needs at most: the LCD's framebuffer, WiFi, BLE, LVGL
+ * while the setup screen is open, the VRAM, ROMs and picture, a cartridge
+ */
+#define PSRAM_FOR_THE_REST  (3u * 1024 * 1024)
 
 static const char *const model_names[] = { "MSX1", "MSX2", "" };
 static const char *const video_names[] = { "50 Hz", "60 Hz", "" };
@@ -33,6 +50,7 @@ static msx_config_t s_cfg;
 static uint8_t *s_bios[2], *s_sub, *s_disk, *s_nextor;
 static bool s_started;
 static char s_rom_text[128];
+static uint32_t s_ram_kb;           /* reserved at power-on */
 
 static void *psram_alloc(uint32_t bytes)
 {
@@ -42,13 +60,21 @@ static void *psram_alloc(uint32_t bytes)
 /* ---- Memory ----
  *
  * At power-on, before the screen, WiFi and Bluetooth fragment PSRAM: the
- * MSX2's 512 KB of RAM (an MSX1 uses 64 KB of it), 128 KB of VRAM, the
- * ROMs, the picture. Disk images and cartridges come later.
+ * MSX2's mapper as chosen (as much of it as fits; an MSX1 uses 64 KB of it,
+ * so switching models needs no new reservation), 128 KB of VRAM, the ROMs,
+ * the picture. Disk images and cartridges come later. More than was
+ * reserved: start() restarts the board, which reserves it first thing.
  */
 static void reserve_memory(void)
 {
     settings_load();
-    s_cfg.ram = heap_caps_malloc(MSX2_RAM_KB * 1024, MALLOC_CAP_SPIRAM);
+    uint32_t kb = settings.ram_kb;
+    size_t free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    while (kb > 128 && (size_t)kb * 1024 + PSRAM_FOR_THE_REST > free) {
+        kb /= 2;
+    }
+    s_cfg.ram = heap_caps_malloc(kb * 1024, MALLOC_CAP_SPIRAM);
+    s_ram_kb = s_cfg.ram ? kb : 0;
     s_cfg.vram = heap_caps_malloc(128 * 1024, MALLOC_CAP_SPIRAM);
     s_cfg.frame = heap_caps_calloc(MSX_SCREEN_WIDTH * MSX_SCREEN_HEIGHT, 2, MALLOC_CAP_SPIRAM);
     s_bios[0] = psram_alloc(rom_store_size(ROM_MSX1));
@@ -75,6 +101,11 @@ static bool start(void)
         return false;
     }
     bool msx2 = settings.model == MSX_MODEL_MSX2;
+    if (msx2 && settings.ram_kb > s_ram_kb) {
+        /* More than fitted at power-on: reserve it first thing after a restart */
+        emu_reboot_into_machine();
+        return false;
+    }
     if (msx2) {
         if (!rom_store_load(ROM_MSX2, s_bios[1]) || !rom_store_load(ROM_MSX2_SUB, s_sub)) {
             emu_set_message("No MSX2 ROMs: put msx2.rom and msx2ext.rom into roms/ and flash with idf.py "
@@ -89,7 +120,7 @@ static bool start(void)
     bool disk = settings.floppy && s_disk && rom_store_load(ROM_DISK, s_disk);
     bool nextor = s_nextor && rom_store_load(ROM_NEXTOR, s_nextor);
     s_cfg.model = settings.model;
-    s_cfg.ram_kb = msx2 ? MSX2_RAM_KB : 64;
+    s_cfg.ram_kb = msx2 ? settings.ram_kb : 64;
     s_cfg.hz50 = settings.video == 0;
     s_cfg.bios = msx2 ? s_bios[1] : s_bios[0];
     s_cfg.sub_rom = msx2 ? s_sub : NULL;
@@ -286,8 +317,42 @@ static void floppy_set(int i)
     }
 }
 
+/* Memory: the MSX1's 64 KB as its one button, the MSX2's mapper sizes */
+enum { CHOICE_MODEL, CHOICE_MEMORY };
+
+static const char *const *choice_names(int i)
+{
+    if (i == CHOICE_MEMORY) {
+        return settings.model == MSX_MODEL_MSX2 ? ram_names : ram_names_msx1;
+    }
+    return NULL;
+}
+
+static int ram_get(void)
+{
+    if (settings.model != MSX_MODEL_MSX2) {
+        return 0;
+    }
+    for (unsigned i = 0; i < RAM_SIZES; i++) {
+        if (ram_sizes[i] == settings.ram_kb) {
+            return i;
+        }
+    }
+    return 2;       /* (512 KB) */
+}
+
+static void ram_set(int i)
+{
+    if (settings.model == MSX_MODEL_MSX2 && i >= 0 && (unsigned)i < RAM_SIZES &&
+        ram_sizes[i] != settings.ram_kb) {
+        settings.ram_kb = ram_sizes[i];
+        settings_save();
+    }
+}
+
 static const emu_choice_t choices[] = {
     { "Model", model_names, model_get, model_set, false },
+    { "Memory", ram_names, ram_get, ram_set, false },
     { "Video", video_names, video_get, video_set, false },
     { "Floppy", floppy_names, floppy_get, floppy_set, false },
 };
@@ -468,8 +533,8 @@ static void status(emu_json_t *j, int section)
     msx_get_status(&s);
     if (section == EMU_STATUS_ROWS) {
         snprintf(text, sizeof(text), "%s, %u KB, %s, floppy drives %s", model_names[settings.model],
-                 settings.model == MSX_MODEL_MSX2 ? MSX2_RAM_KB : 64, video_names[settings.video],
-                 settings.floppy ? "on" : "off");
+                 (unsigned)(s_started ? s_cfg.ram_kb : settings.model == MSX_MODEL_MSX2 ? settings.ram_kb : 64),
+                 video_names[settings.video], settings.floppy ? "on" : "off");
         emu_json_row(j, "System", text);
         emu_json_row(j, "ROMs", s_rom_text);
         if (msx_cart_type()) {
@@ -516,7 +581,8 @@ static void console_info(char *buf, size_t len)
  *   K <n> <0|1>        key down (1) or up (0); 48 SHIFT, 49 CTRL, 60 STOP
  *   T <text>           type text (\n is RETURN)
  *   j <port> <bits>    joystick (1 up 2 down 4 left 8 right 16 A 32 B)
- *   R <model> [hz]     restart as 0 MSX1, 1 MSX2; 50 or 60 Hz
+ *   R <model> [hz] [KB]  restart as 0 MSX1, 1 MSX2; 50 or 60 Hz; the MSX2's
+ *                      mapper in KB (128 ... 2048, the Tab5 4096)
  */
 static bool console_command(const char *line)
 {
@@ -562,11 +628,16 @@ static bool console_command(const char *line)
         return true;
     }
     case 'R': {
-        int model = 0, hz = settings.video ? 60 : 50;
-        int n = sscanf(line + 1, "%d %d", &model, &hz);
-        if (n >= 1 && model >= 0 && model < MSX_MODEL_COUNT && (hz == 50 || hz == 60)) {
+        int model = 0, hz = settings.video ? 60 : 50, kb = settings.ram_kb;
+        int n = sscanf(line + 1, "%d %d %d", &model, &hz, &kb);
+        bool size_ok = false;
+        for (unsigned i = 0; i < RAM_SIZES; i++) {
+            size_ok |= ram_sizes[i] == kb;
+        }
+        if (n >= 1 && model >= 0 && model < MSX_MODEL_COUNT && (hz == 50 || hz == 60) && size_ok) {
             settings.model = model;
             settings.video = hz == 60;
+            settings.ram_kb = kb;
             settings_save();
             emu_restart();
         }
@@ -598,6 +669,7 @@ static const emu_machine_t machine = {
     .audio_pending = msx_audio_pending,
     .hid_key = hid_key,
     .choices = choices,
+    .choice_names = choice_names,
     .choice_count = sizeof(choices) / sizeof(choices[0]),
     .disks = &disks,
     .status = status,

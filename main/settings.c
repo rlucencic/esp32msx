@@ -14,6 +14,7 @@ void settings_load(void)
     settings.video = 0;
     settings.floppy = 1;
     settings.joystick = 1;
+    settings.ram_kb = 512;
 
     nvs_handle_t h;
     if (nvs_open(NAMESPACE, NVS_READONLY, &h) != ESP_OK) {
@@ -32,6 +33,10 @@ void settings_load(void)
     if (nvs_get_u8(h, "joystick", &u8) == ESP_OK && (u8 == 1 || u8 == 2)) {
         settings.joystick = u8;
     }
+    uint16_t u16;
+    if (nvs_get_u16(h, "ram_kb", &u16) == ESP_OK && u16 >= 128 && u16 <= 4096 && (u16 & (u16 - 1)) == 0) {
+        settings.ram_kb = u16;
+    }
     nvs_close(h);
 }
 
@@ -46,6 +51,7 @@ void settings_save(void)
     nvs_set_u8(h, "video", settings.video);
     nvs_set_u8(h, "floppy", settings.floppy);
     nvs_set_u8(h, "joystick", settings.joystick);
+    nvs_set_u16(h, "ram_kb", settings.ram_kb);
     nvs_commit(h);
     nvs_close(h);
 }
