@@ -80,9 +80,10 @@ core this one shares with the Amstrad and the Spectrum.
   the top-right corner for 2 seconds): WiFi, Bluetooth pairing, the model,
   memory, video, the floppy drives, the drives and cartridge, reset
 - **Bluetooth keyboard** (BLE HID)
-- **Web page** at `http://msx.local`: drop disk images, hard disks,
-  cartridges or `.ZIP` files onto it, put them into drives, eject, make
-  blank disks, and watch the machine, drives, board and Bluetooth devices live
+- **Web page** at `http://msx.local`: drop disk images, hard disks, cartridges
+  or `.ZIP` files onto it (with a progress bar), put them into drives, eject,
+  make blank disks, and watch the machine, drives, board and Bluetooth devices
+  live
 - **Sound** on the board's speaker (on the Tab5 by default, on the MaTouch
   optional, `menuconfig`)
 
