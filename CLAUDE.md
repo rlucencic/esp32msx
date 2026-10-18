@@ -140,6 +140,13 @@ or 60 Hz. Touches: Start `t 850 532` (MaTouch), `t 1065 637` (Tab5).
 
 ## Testing
 
+- **Debugger** (esp32emu's `components/emudbg`, the VS Code extension
+  `../esp32emu-vscode`): the board serves it on port 6502;
+  `MSX_DEBUG=<port> build/msx_host ...` serves it from the host build, which
+  then runs in real time until killed. The CPUs (Z80), `where()`,
+  the screen and typing are described in `components/msx/msx.c` (`emudbg_set_machine()`
+  at every init).
+
 - **Host build**: `make -C components/msx/host`, then `build/msx_host
   [frames] [out.ppm]`. Environment: `MSX_ROMS=<folder>`, `MSX_MODEL=2`,
   `MSX_RAM=<KB>`, `MSX_HZ=50|60`, `MSX_NODISK=1`, `MSX_DISKA=`, `MSX_DISKB=`,

@@ -15,7 +15,9 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "msx_internal.h"
+#include "emudbg.h"
 
 msx_t msx;
 slot_t slots[4][4];
@@ -410,6 +412,39 @@ static void power_on(void)
     s_type.key = -1;
 }
 
+/* ---- The debugger (emudbg.h) ---- */
+
+static emudbg_cpu_t s_dbg_cpus[] = {
+    { .name = "Z80", .arch = &emudbg_arch_z80 },
+};
+
+static void dbg_where(char *buf, size_t len)
+{
+    snprintf(buf, len, "frame %lu, T-state %d of the line", (unsigned long)msx.frames,
+             (int)(msx.clock - msx.line_start));
+}
+
+static void dbg_screen(int *width, int *height)
+{
+    *width = MSX_SCREEN_WIDTH;
+    *height = MSX_SCREEN_HEIGHT;
+}
+
+static void dbg_render_line(int y, uint16_t *dst)
+{
+    memcpy(dst, msx_line(y), MSX_SCREEN_WIDTH * sizeof(uint16_t));
+}
+
+static emudbg_machine_t s_dbg = {
+    .cpus = s_dbg_cpus,
+    .cpu_count = 1,
+    .where = dbg_where,
+    .reset = msx_reset,
+    .screen = dbg_screen,
+    .render_line = dbg_render_line,
+    .type = msx_type,
+};
+
 bool msx_init(const msx_config_t *cfg)
 {
     if (cfg->bios == NULL || cfg->ram == NULL || cfg->vram == NULL || cfg->frame == NULL) {
@@ -437,6 +472,8 @@ bool msx_init(const msx_config_t *cfg)
     audio_init();
     z80_set_bus(&s_bus);
     power_on();
+    s_dbg.name = msx.cfg.model == MSX_MODEL_MSX2 ? "MSX2" : "MSX";
+    emudbg_set_machine(&s_dbg);
     return true;
 }
 
