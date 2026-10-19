@@ -15,6 +15,11 @@
 </p>
 
 <p align="center">
+  <b>Work in progress:</b> not everything has been tested, and games and demos may or may not
+  work satisfactorily.
+</p>
+
+<p align="center">
   <img alt="The MSX2's start-up logo: MSX in white on black, VRAM:128Kbytes" src="docs/images/logo.png" width="49%">
   <img alt="Nextor BASIC 2.10: a program saved to the hard disk (A:) and a floppy (B:), both listed, 32591 KB and 712 KB free, then run" src="docs/images/nextor.png" width="49%">
   <br>
