@@ -188,6 +188,10 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 - `.dsk` only (no `.dmk`); one hard disk.
 - Public on GitHub (`github.com/rlucencic/esp32msx`, pushed to `main`).
   Licence: MIT (`LICENSE`).
+- **Clock** (the clock audit, 2026-10-21: `../esp32emu/CLAUDE.md`, To do):
+  before NTP (the MaTouch at 1970) the RP5C01's year (year - 1980) is
+  negative and its tens digit reads as garbage (`rtc.c`); a clock set by the
+  MSX before NTP is shifted by NTP's step (the offset).
 
 ## Working with the user
 
