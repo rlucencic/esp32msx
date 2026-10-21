@@ -16,6 +16,7 @@
  */
 #include <stdlib.h>
 #include <string.h>
+#include "diskspace.h"
 #include "msx_internal.h"
 
 #define MS              (MSX_CLOCK_HZ / 1000)
@@ -607,6 +608,31 @@ void msx_floppy_eject(int d)
     s_fd[d].data = NULL;
     s_fd[d].path[0] = 0;
     s_fd[d].changed = true;
+}
+
+static bool image_read(void *ctx, uint64_t offset, void *buf, uint32_t len)
+{
+    const floppy_t *f = ctx;
+    if (offset > f->size || len > f->size - offset) {
+        return false;
+    }
+    memcpy(buf, f->data + offset, len);
+    return true;
+}
+
+bool msx_floppy_space(int d, uint64_t *free_bytes, uint64_t *size)
+{
+    if (d < 0 || d >= MSX_FLOPPIES || !s_fd[d].data) {
+        return false;
+    }
+    diskspace_disk_t disk = { image_read, &s_fd[d], s_fd[d].size };
+    diskspace_t s;
+    if (!diskspace_fat(&disk, 0, &s)) {
+        return false;
+    }
+    *free_bytes = s.free;
+    *size = s.size;
+    return true;
 }
 
 const char *msx_floppy_path(int d)

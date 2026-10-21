@@ -1,7 +1,8 @@
 # MSX1 / MSX2, platform independent (see include/msx.h); the Z80 is esp32emu's
 idf_component_register(SRCS "msx.c" "vdp.c" "psg.c" "fdc.c" "ide.c" "cart.c" "rtc.c"
                        INCLUDE_DIRS "include"
-                       REQUIRES z80)
+                       REQUIRES z80
+                       PRIV_REQUIRES diskspace)
 
 # Runs in the emulation loop: jump tables for the switches (the IDF turns
 # them off for code that may run with the flash cache disabled; the

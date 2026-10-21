@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "diskspace.h"
 #include "msx_internal.h"
 
 #define BATCH           64          /* sectors read at once */
@@ -439,6 +440,28 @@ const char *msx_hd_path(void)
 bool msx_hd_flush(void)
 {
     return ide.fp == NULL || (fflush(ide.fp) == 0 && fsync(fileno(ide.fp)) == 0);
+}
+
+static bool image_read(void *ctx, uint64_t offset, void *buf, uint32_t len)
+{
+    return offset + len <= (uint64_t)ide.sectors * 512 && fseek(ide.fp, (long)offset, SEEK_SET) == 0 &&
+           fread(buf, 1, len, ide.fp) == len;
+}
+
+/* The image's FAT partitions (the IDE seeks before each transfer) */
+bool msx_hd_space(uint64_t *free_bytes, uint64_t *size)
+{
+    if (ide.fp == NULL) {
+        return false;
+    }
+    diskspace_disk_t disk = { image_read, NULL, (uint64_t)ide.sectors * 512 };
+    diskspace_t s;
+    if (!diskspace_fat_disk(&disk, &s)) {
+        return false;
+    }
+    *free_bytes = s.free;
+    *size = s.size;
+    return true;
 }
 
 static void le16(uint8_t *p, uint32_t v)

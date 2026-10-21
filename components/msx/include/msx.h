@@ -95,6 +95,14 @@ const char *msx_hd_path(void);
 bool msx_hd_flush(void);
 bool msx_hd_create(const char *path, uint32_t bytes);       /* MBR + one FAT16 partition */
 
+/* A disk's free space and size in bytes as its FAT counts them (the data
+ * area; the hard disk's FAT partitions added up), read from the image now:
+ * not while msx_run_frame() runs on another task. False when empty or not
+ * FAT.
+ */
+bool msx_floppy_space(int drive, uint64_t *free_bytes, uint64_t *size);
+bool msx_hd_space(uint64_t *free_bytes, uint64_t *size);
+
 /* The cartridge (.rom): takes effect at the next start */
 bool msx_cart_insert(const char *path);
 void msx_cart_eject(void);

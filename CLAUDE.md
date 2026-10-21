@@ -177,6 +177,10 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
   much, the mapper registers read 83 82 81 80 and 03 02 01 00.
 - **Not checked by hand**: games, a Bluetooth keyboard and joystick on the
   MSX, sound on the speakers.
+- **Free disk space** (web page): floppies' FAT12 (`msx_floppy_space()`)
+  and the hard disk's MBR + FAT16 (`msx_hd_space()`), counted at insert
+  and on the emulation task after a flush. Host: Nextor's own counts;
+  Tab5 (2026-10-21): a blank floppy 730112.
 
 ## Open items
 

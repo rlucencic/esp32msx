@@ -315,6 +315,13 @@ int main(int argc, char **argv)
     }
     msx_floppy_flush();
     msx_hd_flush();
+    for (int d = 0; d < 3; d++) {
+        uint64_t free_bytes, size;
+        if (d < 2 ? msx_floppy_space(d, &free_bytes, &size) : msx_hd_space(&free_bytes, &size)) {
+            printf("host: %s: %llu bytes free of %llu\n", d == 0 ? "floppy 1" : d == 1 ? "floppy 2" : "hard disk",
+                   (unsigned long long)free_bytes, (unsigned long long)size);
+        }
+    }
     if (out) {
         write_ppm(out);
     }

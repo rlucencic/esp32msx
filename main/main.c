@@ -423,6 +423,61 @@ static void restart_if_started(void)
     }
 }
 
+/* ---- Free space, for the web page ----
+ *
+ * A disk's FAT is counted at insert (the emulation is paused then) and once
+ * every_second() has put its writes into the file: on the emulation task,
+ * before its next frame (the images are its own; the stats task's stack
+ * is small for the reading).
+ */
+typedef struct {
+    volatile bool known;
+    volatile uint64_t free, size;
+    uint32_t writes;                /* the drive's write count when counted */
+} space_t;
+
+static space_t s_space[DRIVE_HD + 1];
+static volatile bool s_space_due;   /* flushed: count the drives written since */
+
+static uint32_t drive_writes(int drive)
+{
+    msx_status_t s;
+    msx_get_status(&s);
+    return drive == DRIVE_HD ? s.hd_writes : s.floppy_writes[drive];
+}
+
+static void space_count(int drive)
+{
+    uint64_t f = 0, size = 0;
+    bool known = drive == DRIVE_HD ? msx_hd_space(&f, &size) : msx_floppy_space(drive, &f, &size);
+    s_space[drive].writes = drive_writes(drive);
+    s_space[drive].known = false;
+    s_space[drive].free = f;
+    s_space[drive].size = size;
+    s_space[drive].known = known;
+}
+
+/* The figures for the web page: the size, 0 if not known */
+static uint64_t space_get(int drive, uint64_t *free_bytes)
+{
+    *free_bytes = s_space[drive].free;
+    uint64_t size = s_space[drive].size;
+    return s_space[drive].known ? size : 0;
+}
+
+static void run_frame(void)
+{
+    if (s_space_due) {
+        s_space_due = false;
+        for (int d = 0; d <= DRIVE_HD; d++) {
+            if (drive_writes(d) != s_space[d].writes) {
+                space_count(d);
+            }
+        }
+    }
+    msx_run_frame();
+}
+
 static bool insert(int drive, const char *path)
 {
     if (!accepts(drive, path)) {
@@ -433,6 +488,7 @@ static bool insert(int drive, const char *path)
         if (!msx_hd_insert(path)) {
             return false;
         }
+        space_count(DRIVE_HD);
         restart_if_started();
         return true;
     case DRIVE_CART:
@@ -442,12 +498,19 @@ static bool insert(int drive, const char *path)
         restart_if_started();
         return true;
     default:
-        return msx_floppy_insert(drive, path);
+        if (!msx_floppy_insert(drive, path)) {
+            return false;
+        }
+        space_count(drive);
+        return true;
     }
 }
 
 static void eject(int drive)
 {
+    if (drive <= DRIVE_HD) {
+        s_space[drive].known = false;
+    }
     switch (drive) {
     case DRIVE_HD:
         msx_hd_eject();
@@ -506,6 +569,7 @@ static void flush(void *arg)
 {
     msx_floppy_flush();
     msx_hd_flush();
+    s_space_due = true;
 }
 
 static void every_second(void)
@@ -563,7 +627,9 @@ static void status(emu_json_t *j, int section)
         } else {
             detail = msx_cart_type();
         }
-        emu_json_drive(j, drive_names[d], name, write_protected(d), light, reads, writes, detail);
+        uint64_t free_bytes = 0, size = d <= DRIVE_HD ? space_get(d, &free_bytes) : 0;
+        emu_json_drive_space(j, drive_names[d], name, write_protected(d), light, reads, writes, detail, free_bytes,
+                             size);
     }
 }
 
@@ -659,7 +725,7 @@ static const emu_machine_t machine = {
     .storage = storage,
     .start = start,
     .reset = msx_reset,
-    .run_frame = msx_run_frame,
+    .run_frame = run_frame,
     .screen_mode = screen_mode,
     .screen_signature = msx_screen_signature,
     .render_line = render_line,
