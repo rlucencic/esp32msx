@@ -748,6 +748,21 @@ static void draw_tiles(uint16_t *dst, int y, int m)
     }
 }
 
+/* Keep the row-local palette out of the other modes' stack frame. */
+static __attribute__((noinline)) void draw_four_colors(uint16_t *dst, uint32_t base)
+{
+    /* Resolve transparent color zero once for this line. The other
+     * three indices always use their palette entries directly. */
+    const uint16_t colors[4] = { color(0), vdp.palette[1], vdp.palette[2], vdp.palette[3] };
+    for (int i = 0; i < 128; i++) {
+        uint8_t b = vram_rd(base + i);
+        *dst++ = colors[b >> 6];
+        *dst++ = colors[b >> 4 & 3];
+        *dst++ = colors[b >> 2 & 3];
+        *dst++ = colors[b & 3];
+    }
+}
+
 static void draw_bitmap(uint16_t *dst, int y, int m)
 {
     switch (m) {
@@ -762,17 +777,9 @@ static void draw_bitmap(uint16_t *dst, int y, int m)
         }
         break;
     }
-    case MODE_G5: {
-        uint32_t base = ((vdp.reg[2] & 0x60) << 10) + y * 128;
-        for (int i = 0; i < 128; i++) {
-            uint8_t b = vram_rd(base + i);
-            *dst++ = color(b >> 6 & 3);
-            *dst++ = color(b >> 4 & 3);
-            *dst++ = color(b >> 2 & 3);
-            *dst++ = color(b & 3);
-        }
+    case MODE_G5:
+        draw_four_colors(dst, ((vdp.reg[2] & 0x60) << 10) + y * 128);
         break;
-    }
     case MODE_G6: {
         /* Adjacent logical bytes are in separate 64 KB banks. Each row
          * advances 128 bytes within each bank, without crossing its end. */

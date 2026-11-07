@@ -152,6 +152,12 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 
 ## Testing
 
+- SCREEN 6's row-local four-color helper is measured in
+  `docs/screen6-palette-experiment-2026-11-07.md`: native differential/oracle
+  checks, ten host pictures, full P4 LCD/profile comparisons and S3/P4 builds.
+  It preserves the other modes' stack frame and reduces rendering work;
+  the report records control observations and unmeasured S3 timing.
+
 - The SCREEN 7/8 paired VRAM-bank trial is in
   `docs/bitmap-banks-experiment-2026-11-07.md`: native pixel/address checks,
   host bitmap fixtures, P4 timing/full LCD comparisons and S3/P4 builds.
