@@ -763,37 +763,45 @@ static __attribute__((noinline)) void draw_four_colors(uint16_t *dst, uint32_t b
     }
 }
 
-static void draw_bitmap(uint16_t *dst, int y, int m)
+/* SCREEN 5 doubles pixels; SCREEN 7 reads pairs from interleaved banks.
+ * Keep the row-local palette out of the other modes' stack frame. */
+static __attribute__((noinline)) void draw_sixteen_colors(uint16_t *dst, uint32_t base, bool banked)
 {
-    switch (m) {
-    case MODE_G4: {
-        uint32_t base = ((vdp.reg[2] & 0x60) << 10) + y * 128;
+    uint16_t colors[16];
+    memcpy(colors, vdp.palette, sizeof(colors));
+    colors[0] = color(0);
+    if (banked) {
         for (int i = 0; i < 128; i++) {
             uint8_t b = vram_rd(base + i);
-            uint16_t c0 = color(b >> 4), c1 = color(b);
+            *dst++ = colors[b >> 4];
+            *dst++ = colors[b & 15];
+            b = vram_rd(base + i + 0x10000);
+            *dst++ = colors[b >> 4];
+            *dst++ = colors[b & 15];
+        }
+    } else {
+        for (int i = 0; i < 128; i++) {
+            uint8_t b = vram_rd(base + i);
+            uint16_t c0 = colors[b >> 4], c1 = colors[b & 15];
             dst[0] = dst[1] = c0;
             dst[2] = dst[3] = c1;
             dst += 4;
         }
-        break;
     }
+}
+
+static void draw_bitmap(uint16_t *dst, int y, int m)
+{
+    switch (m) {
+    case MODE_G4:
+        draw_sixteen_colors(dst, ((vdp.reg[2] & 0x60) << 10) + y * 128, false);
+        break;
     case MODE_G5:
         draw_four_colors(dst, ((vdp.reg[2] & 0x60) << 10) + y * 128);
         break;
-    case MODE_G6: {
-        /* Adjacent logical bytes are in separate 64 KB banks. Each row
-         * advances 128 bytes within each bank, without crossing its end. */
-        uint32_t base = phys(((vdp.reg[2] & 0x20) << 11) + y * 256, true);
-        for (int i = 0; i < 128; i++) {
-            uint8_t b = vram_rd(base + i);
-            *dst++ = color(b >> 4);
-            *dst++ = color(b);
-            b = vram_rd(base + i + 0x10000);
-            *dst++ = color(b >> 4);
-            *dst++ = color(b);
-        }
+    case MODE_G6:
+        draw_sixteen_colors(dst, phys(((vdp.reg[2] & 0x20) << 11) + y * 256, true), true);
         break;
-    }
     default: {                              /* G7 */
         uint32_t base = phys(((vdp.reg[2] & 0x20) << 11) + y * 256, true);
         for (int i = 0; i < 128; i++) {

@@ -152,6 +152,13 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 
 ## Testing
 
+- SCREEN 5/7's sixteen-color row helper is measured in
+  `docs/screen57-palette-experiment-2026-11-07.md`: 262,144 differential
+  rows, 32,768 oracle rows, ten host pictures, four exact P4 LCD captures,
+  full profiles and S3/P4 builds. P4 row costs fall 20.6–26.7% / 24.2–28.3%;
+  the report records stack and core-0 observations. Next profile VDP
+  command fill/copy workloads; S3 timing and real software remain open.
+
 - SCREEN 6's row-local four-color helper is measured in
   `docs/screen6-palette-experiment-2026-11-07.md`: native differential/oracle
   checks, ten host pictures, full P4 LCD/profile comparisons and S3/P4 builds.
