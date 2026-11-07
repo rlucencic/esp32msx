@@ -152,6 +152,14 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 
 ## Testing
 
+- HMMV/HMMM byte-stride iteration is measured in
+  `docs/command-stride-experiment-2026-11-07.md`: 65,248 full VRAM/state
+  comparisons, 58,224 byte-command oracles, eighteen host pictures, four
+  exact P4 LCD comparisons and S3/P4 builds. Large-command P4 cost falls
+  14.6–67.2%; YMMM controls cost 1.3–2.5% more. The report records the
+  additional register-write stack/code cost and synthetic-only throughput.
+  Next investigate logical-command pixel work; S3 timing remains open.
+
 - SCREEN 5/7's sixteen-color row helper is measured in
   `docs/screen57-palette-experiment-2026-11-07.md`: 262,144 differential
   rows, 32,768 oracle rows, ten host pictures, four exact P4 LCD captures,

@@ -381,19 +381,19 @@ static void cmd_start(uint8_t v)
     }
     case 0x8: case 0xC: {                   /* LMMV, HMMV */
         bool bytes = vdp.cmd.cmd == 0xC;
+        int step = bytes ? ppb : 1;
         if (nx == 0) nx = width;
         if (ny == 0) ny = 1024;
         int y = dy;
         for (int j = 0; j < ny; j++, y += diy) {
             int x = dx;
-            for (int i = 0; i < nx; i++, x += dix) {
+            /* HMMV writes at i = 0, ppb, ...; skipped pixels have no effect. */
+            for (int i = 0; i < nx; i += step, x += dix * step) {
                 if (x < 0 || x >= width) {
                     break;
                 }
                 if (bytes) {
-                    if (i % ppb == 0) {
-                        vdp.vram[phys(cmd_addr(m, x, y), planar())] = clr;
-                    }
+                    vdp.vram[phys(cmd_addr(m, x, y), planar())] = clr;
                 } else {
                     pset(m, x, y, clr, op);
                 }
@@ -405,20 +405,20 @@ static void cmd_start(uint8_t v)
     }
     case 0x9: case 0xD: {                   /* LMMM, HMMM */
         bool bytes = vdp.cmd.cmd == 0xD;
+        int step = bytes ? ppb : 1;
         if (nx == 0) nx = width;
         if (ny == 0) ny = 1024;
         int ys = sy, yd = dy;
         for (int j = 0; j < ny; j++, ys += diy, yd += diy) {
             int xs = sx, xd = dx;
-            for (int i = 0; i < nx; i++, xs += dix, xd += dix) {
+            /* Preserve byte read/write order, including overlapping copies. */
+            for (int i = 0; i < nx; i += step, xs += dix * step, xd += dix * step) {
                 if (xs < 0 || xs >= width || xd < 0 || xd >= width) {
                     break;
                 }
                 if (bytes) {
-                    if (i % ppb == 0) {
-                        vdp.vram[phys(cmd_addr(m, xd, yd), planar())] =
-                            vram_rd(phys(cmd_addr(m, xs, ys), planar()));
-                    }
+                    vdp.vram[phys(cmd_addr(m, xd, yd), planar())] =
+                        vram_rd(phys(cmd_addr(m, xs, ys), planar()));
                 } else {
                     pset(m, xd, yd, point(m, xs, ys), op);
                 }
