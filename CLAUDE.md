@@ -152,12 +152,23 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 
 ## Testing
 
+- Real-software validation is recorded in
+  `docs/software-profile-2026-11-07.md`: six original/retained replays match
+  at 114 pictures, eighteen visible-memory/VRAM snapshots and six supported
+  audio captures. Lilly's SCREEN 4 gameplay is profiled on Tab5 with both
+  builds; its retained core-1 idle is slightly lower despite capped FPS.
+  Host command counts are zero after frame 3000 in these replays. Next
+  investigate tile expansion (`pattern8`) and sprites. Zevimodoki's 64 KB
+  ROM returns to BASIC in both builds; its disk version reaches gameplay.
+  MSX-Music, later stages, physical input/audio and S3 timing remain open.
+
 - Two packed-bit `pset` rewrites are rejected in
   `docs/logical-pixel-experiment-2026-11-07.md`: exhaustive pixel and
   command/transfer checks pass, but common COPY/NOT paths regress despite
   selective OR/XOR or transparent-zero savings. Production source and
-  Tab5 are restored to the retained implementation. Next profile
-  representative MSX software on copied images before specializing further.
+  Tab5 are restored to the retained implementation. The software follow-up
+  above now provides a bounded real-game comparison and selects tile/sprite
+  work before further command specialization.
 
 - HMMV/HMMM byte-stride iteration is measured in
   `docs/command-stride-experiment-2026-11-07.md`: 65,248 full VRAM/state
