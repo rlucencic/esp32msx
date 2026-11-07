@@ -750,7 +750,6 @@ static void draw_tiles(uint16_t *dst, int y, int m)
 
 static void draw_bitmap(uint16_t *dst, int y, int m)
 {
-    bool pl = m == MODE_G6 || m == MODE_G7;
     switch (m) {
     case MODE_G4: {
         uint32_t base = ((vdp.reg[2] & 0x60) << 10) + y * 128;
@@ -775,20 +774,27 @@ static void draw_bitmap(uint16_t *dst, int y, int m)
         break;
     }
     case MODE_G6: {
-        uint32_t base = ((vdp.reg[2] & 0x20) << 11) + y * 256;
-        for (int i = 0; i < 256; i++) {
-            uint8_t b = vram_rd(phys(base + i, pl));
+        /* Adjacent logical bytes are in separate 64 KB banks. Each row
+         * advances 128 bytes within each bank, without crossing its end. */
+        uint32_t base = phys(((vdp.reg[2] & 0x20) << 11) + y * 256, true);
+        for (int i = 0; i < 128; i++) {
+            uint8_t b = vram_rd(base + i);
+            *dst++ = color(b >> 4);
+            *dst++ = color(b);
+            b = vram_rd(base + i + 0x10000);
             *dst++ = color(b >> 4);
             *dst++ = color(b);
         }
         break;
     }
     default: {                              /* G7 */
-        uint32_t base = ((vdp.reg[2] & 0x20) << 11) + y * 256;
-        for (int i = 0; i < 256; i++) {
-            uint16_t c = vdp.rgb332[vram_rd(phys(base + i, pl))];
+        uint32_t base = phys(((vdp.reg[2] & 0x20) << 11) + y * 256, true);
+        for (int i = 0; i < 128; i++) {
+            uint16_t c = vdp.rgb332[vram_rd(base + i)];
             dst[0] = dst[1] = c;
-            dst += 2;
+            c = vdp.rgb332[vram_rd(base + i + 0x10000)];
+            dst[2] = dst[3] = c;
+            dst += 4;
         }
         break;
     }

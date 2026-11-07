@@ -152,6 +152,12 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 
 ## Testing
 
+- The SCREEN 7/8 paired VRAM-bank trial is in
+  `docs/bitmap-banks-experiment-2026-11-07.md`: native pixel/address checks,
+  host bitmap fixtures, P4 timing/full LCD comparisons and S3/P4 builds.
+  It measures synthetic P4 rendering headroom; S3 runtime, games, physical
+  input and speaker checks remain open.
+
 - **Debugger** (esp32emu's `components/emudbg`, the VS Code extension
   `../esp32emu-vscode`): the board serves it on port 6502;
   `MSX_DEBUG=<port> build/msx_host ...` serves it from the host build, which
