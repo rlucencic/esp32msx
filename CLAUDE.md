@@ -152,14 +152,26 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 
 ## Testing
 
+- Doubled tile pixels are measured in
+  `docs/tile-pairs-experiment-2026-11-08.md`. The outlined, unrolled aligned
+  `pattern8` saves 17.4–26.3% in P4 tile-row kernels. Lilly's valid LCD-on
+  repeat reduces combined renderer share from 41.3–42.1% to 38.8–39.1%,
+  including the new helper; both builds stay near 60 FPS. Cost: +314 bytes
+  linked text, +32 bytes common line stack, and ~12% slower halfword-only
+  fallback (normal frames are word-aligned). Native oracles, six software
+  replays and S3/P4 builds pass. An initial stale-LCD run is excluded and
+  documented; do not reuse its timings. S3 timing remains unmeasured.
+  Next measure sprite scanning/compositing with status/collision oracles.
+
 - Real-software validation is recorded in
   `docs/software-profile-2026-11-07.md`: six original/retained replays match
   at 114 pictures, eighteen visible-memory/VRAM snapshots and six supported
   audio captures. Lilly's SCREEN 4 gameplay is profiled on Tab5 with both
   builds; its retained core-1 idle is slightly lower despite capped FPS.
-  Host command counts are zero after frame 3000 in these replays. Next
-  investigate tile expansion (`pattern8`) and sprites. Zevimodoki's 64 KB
-  ROM returns to BASIC in both builds; its disk version reaches gameplay.
+  Host command counts are zero after frame 3000 in these replays. The tile
+  follow-up above measures `pattern8`; sprites remain the next target.
+  Zevimodoki's 64 KB ROM returns to BASIC in both builds; its disk version
+  reaches gameplay.
   MSX-Music, later stages, physical input/audio and S3 timing remain open.
 
 - Two packed-bit `pset` rewrites are rejected in

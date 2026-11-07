@@ -663,14 +663,25 @@ static inline void fill(uint16_t *dst, int n, uint16_t c)
     }
 }
 
-/* 8 pixels of a pattern byte, each `w` hires pixels wide */
-static inline void pattern8(uint16_t *dst, uint8_t bits, uint16_t fg, uint16_t bg, int w)
+/* Eight doubled pixels. Rows/tiles are word-aligned in the framebuffer;
+ * retain halfword writes for a caller with only halfword alignment. */
+static __attribute__((noinline)) void pattern8(uint16_t *dst, uint8_t bits, uint16_t fg, uint16_t bg)
 {
-    for (int i = 0; i < 8; i++, bits <<= 1) {
-        uint16_t c = (bits & 0x80) ? fg : bg;
-        for (int k = 0; k < w; k++) {
-            *dst++ = c;
+    if ((uintptr_t)dst & 3) {
+        for (int i = 0; i < 8; i++, bits <<= 1) {
+            uint16_t c = (bits & 0x80) ? fg : bg;
+            dst[0] = dst[1] = c;
+            dst += 2;
         }
+        return;
+    }
+    uint32_t f = fg | ((uint32_t)fg << 16), b = bg | ((uint32_t)bg << 16);
+    uint16_t *p = __builtin_assume_aligned(dst, 4);
+#pragma GCC unroll 8
+    for (int i = 0; i < 8; i++, bits <<= 1) {
+        uint32_t c = (bits & 0x80) ? f : b;
+        memcpy(p, &c, sizeof(c));
+        p += 2;
     }
 }
 
@@ -720,7 +731,7 @@ static void draw_tiles(uint16_t *dst, int y, int m)
         for (int col = 0; col < 32; col++) {
             uint8_t c = vram_rd(nt + row * 32 + col);
             uint8_t cl = vram_rd(ct + (c >> 3));
-            pattern8(dst + col * 16, vram_rd(pg + c * 8 + line), color(cl >> 4), color(cl), 2);
+            pattern8(dst + col * 16, vram_rd(pg + c * 8 + line), color(cl >> 4), color(cl));
         }
         return;
     }
@@ -744,7 +755,7 @@ static void draw_tiles(uint16_t *dst, int y, int m)
         int idx = vram_rd(nt + row * 32 + col) + third;
         uint8_t bits = vram_rd(pg + ((idx & pmask) << 3) + line);
         uint8_t cl = vram_rd(ct + ((idx & cmask) << 3) + line);
-        pattern8(dst + col * 16, bits, color(cl >> 4), color(cl), 2);
+        pattern8(dst + col * 16, bits, color(cl >> 4), color(cl));
     }
 }
 

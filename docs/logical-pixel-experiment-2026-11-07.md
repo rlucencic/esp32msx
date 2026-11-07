@@ -26,13 +26,16 @@ access occurs on that early return in either reference or candidate.
 Both variants preserve existing emulator semantics, not new V9938 accuracy.
 
 The first linked P4 test app reduces `pset` from 478 to 422 text bytes;
-`reg_write` remains 2412 bytes. In a production-flags P4 component object,
-the revised form has a 382-byte `pset` and 2452-byte `reg_write` (+40),
-again 56 fewer bytes combined. This object is not a linked full app.
+`reg_write` remains 2412 bytes. Comparable production-flags P4 component
+objects have a 478-byte reference `pset` versus 382 bytes in the revised
+form; both have a 2452-byte `reg_write`, giving 96 fewer bytes combined.
+The revised object is not a linked full app. Size accounting was corrected
+on 2026-11-08: the earlier text mixed object and linked sizes, incorrectly
+attributing a 40-byte difference to the revised register writer.
 Both keep `pset` as a stackless leaf and the register-write frame at 128
 bytes. No new state, cache or allocation; VDP state remains 696 bytes.
-The revised source also changes caller compiler output, so it is not safe
-to infer its cost from helper size or instruction removal alone.
+It is not safe to infer execution cost from helper size or instruction
+removal alone.
 
 ## Correctness and build coverage
 
