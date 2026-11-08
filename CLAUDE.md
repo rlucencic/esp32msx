@@ -161,7 +161,16 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
   fallback (normal frames are word-aligned). Native oracles, six software
   replays and S3/P4 builds pass. An initial stale-LCD run is excluded and
   documented; do not reuse its timings. S3 timing remains unmeasured.
-  Next measure sprite scanning/compositing with status/collision oracles.
+  Sprite compositing is measured in the follow-up below.
+
+- Sprite composite bounds are measured in
+  `docs/sprite-bounds-experiment-2026-11-08.md`. Over two million native
+  row/status/oracle cases and six software replay pairs pass. The isolated
+  P4 captured-row kernel costs 10.55% less, with a 1.44% empty-list cost
+  increase and +62 bytes linked text; stack is unchanged. Shared display
+  fixes discovered during the trial are documented in
+  `../esp32emu/docs/display-reliability-2026-11-08.md`. Both full-app
+  comparison builds include those fixes. S3 timing remains unmeasured.
 
 - Real-software validation is recorded in
   `docs/software-profile-2026-11-07.md`: six original/retained replays match

@@ -847,6 +847,7 @@ static void draw_sprites(uint16_t *dst, int y, int m)
     uint8_t owner[256 + 32];
     memset(pix, 0, sizeof(pix));
     int count = 0, group = -1;
+    int left = 256, right = 0;
     for (int i = 0; i < 32; i++) {
         uint32_t a = sat + i * 4;
         uint8_t sy = vram_rd(phys(a, pl));
@@ -890,6 +891,16 @@ static void draw_sprites(uint16_t *dst, int y, int m)
         if (size == 16) {
             bits |= vram_rd(phys(spg + pat * 8 + 16 + row, pl));
         }
+        /* Bound only the final palette/composite pass; all sprite pixels
+         * still participate in priority and collision processing below. */
+        int first = sx < 0 ? 0 : sx;
+        int last = sx + span > 256 ? 256 : sx + span;
+        if (first < left) {
+            left = first;
+        }
+        if (last > right) {
+            right = last;
+        }
         for (int k = 0; k < size; k++, bits <<= 1) {
             if (!(bits & 0x8000)) {
                 continue;
@@ -919,7 +930,7 @@ static void draw_sprites(uint16_t *dst, int y, int m)
         return;
     }
     bool transparent0 = !(vdp.v9938 && (vdp.reg[8] & 0x20));
-    for (int x = 0; x < 256; x++) {
+    for (int x = left; x < right; x++) {
         if (!(pix[x] & 0x80)) {
             continue;
         }
