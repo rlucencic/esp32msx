@@ -123,7 +123,7 @@ Tab5 960×720.
 
 ### 1. What you need
 
-- [ESP-IDF](https://github.com/espressif/esp-idf) v5.5 (developed with v5.5.4)
+- [ESP-IDF](https://github.com/espressif/esp-idf) v5.5 (developed with v5.5.6)
 - [esp32emu](https://github.com/rlucencic/esp32emu), checked out next to this project (`../esp32emu`)
 - The MSX ROM images in `roms/` (see [roms/README.md](roms/README.md)):
   the MSX1 or MSX2 BIOS, the MSX2 SUB-ROM, and if you like the disk ROM and

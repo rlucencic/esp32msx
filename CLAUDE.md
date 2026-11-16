@@ -6,7 +6,7 @@ MSX's M1 wait state, the slots and subslots, the PPI and keyboard, the
 AY-3-8910 with the key click, two floppy drives behind a WD2793 (Philips
 style disk ROM), a Sunrise IDE hard disk with Nextor, and ROM cartridges with
 their mappers and Konami's SCC. An LVGL setup screen, a web page for images
-and live status. ESP-IDF v5.5.4, C.
+and live status. ESP-IDF v5.5.6, C.
 
 The board side (tasks, LCD, touch, SD, WiFi, BLE, setup screen, web page,
 console) and the Z80 core are the shared library in `../esp32emu`, also used
@@ -27,7 +27,7 @@ The Tab5 is `/dev/cu.usbmodem3101` (its hardware: `../esp32emu/CLAUDE.md`).
 
 ```sh
 bash -c '. $IDF_PATH/export.sh >/dev/null 2>&1; \
-  export IDF_PYTHON_ENV_PATH=/Users/robertlucencic/.espressif/tools/python/v5.5.4/venv; \
+  export IDF_PYTHON_ENV_PATH=/Users/robertlucencic/.espressif/tools/python/v5.5.6/venv; \
   export PATH=$IDF_PYTHON_ENV_PATH/bin:$PATH; \
   idf.py build && idf.py -p /dev/cu.usbmodem1101 app-flash'
 # the Tab5:
