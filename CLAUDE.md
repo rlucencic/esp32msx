@@ -41,8 +41,9 @@ bash -c '. $IDF_PATH/export.sh >/dev/null 2>&1; \
   `disk.rom` 5, `nextor.rom` 6 (top `CMakeLists.txt`, `main/rom_store.c`).
   The partition overlaps the other machines' ROM partitions: switching a
   board needs a full `idf.py flash` there (and here). NVS (WiFi, BLE
-  pairings) is shared. Without flashed ROMs, `roms/` on the SD card (any
-  case) works too.
+  pairings) is shared. Without flashed ROMs, `msx/roms/` on the SD card
+  (any case) works too (until 2026-11-17 a shared `roms/`: esp32emu's
+  `tools/sd_folders.ps1` moves an old card's files).
 - `../esp32emu/tools/emu_console.py PORT log N | screenshot F.png | lcd F.png | send "cmd" ... | info | reset | profile ELF [N]`
   with the IDF venv's Python (`-I`).
 - `curl http://msx.local/api/status`; disks `curl -T img http://msx.local/disks/`,
@@ -127,7 +128,7 @@ at 50 or 60 Hz, with the MSX2's mapper in KB (128 to 2048, the Tab5 4096). Touch
 
 - NVS `msx`: `model`, `video`, `floppy`, `joystick`, `ram_kb` (the MSX2's
   mapper, default 512); `msxdisks`: the
-  drives' images. SD card: images in `msx/`.
+  drives' images. SD card: images in `msx/`, ROMs in `msx/roms/`.
 
 ## Performance (measured 2026-10-18)
 

@@ -6,7 +6,7 @@
 /*
  * The MSX ROMs: from the msx_roms flash partition (roms/<name> in the
  * project, written by idf.py flash into 16 KB slots), else from the SD
- * card's "roms" folder under the same names.
+ * card's "msx/roms" folder under the same names.
  */
 typedef enum {
     ROM_MSX1,                   /* msx.rom: MSX1 BIOS + BASIC, 32 KB */
