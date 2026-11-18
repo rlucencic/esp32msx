@@ -109,12 +109,11 @@ static bool start(void)
     if (msx2) {
         if (!rom_store_load(ROM_MSX2, s_bios[1]) || !rom_store_load(ROM_MSX2_SUB, s_sub)) {
             emu_set_message("No MSX2 ROMs: put msx2.rom and msx2ext.rom into roms/ and flash with idf.py "
-                            "flash, or copy them into the \"msx/roms\" folder on the SD card.");
+                            "flash.");
             return false;
         }
     } else if (!rom_store_load(ROM_MSX1, s_bios[0])) {
-        emu_set_message("No MSX1 ROM: put msx.rom into roms/ and flash with idf.py flash, "
-                        "or copy it into the \"msx/roms\" folder on the SD card.");
+        emu_set_message("No MSX1 ROM: put msx.rom into roms/ and flash with idf.py flash.");
         return false;
     }
     bool disk = settings.floppy && s_disk && rom_store_load(ROM_DISK, s_disk);
@@ -372,6 +371,7 @@ enum { DRIVE_A, DRIVE_B, DRIVE_HD, DRIVE_CART, DRIVES };
 #define HD_128M         (128u * 1024 * 1024)
 
 static const char *const extensions[] = { ".dsk", ".hdd", ".img", ".rom", ".mx1", ".mx2", NULL };
+static const char *const cart_extensions[] = { ".rom", ".mx1", ".mx2", NULL };     /* in msx/roms */
 static const char *const drive_names[] = { "Floppy 1", "Floppy 2", "Hard disk", "Cartridge" };
 static const disks_size_t sizes[] = {
     { FLOPPY_720K, "720 KB double-sided disk" },
@@ -386,11 +386,19 @@ static bool has_ext(const char *name, const char *ext)
     return n > e && strcasecmp(name + n - e, ext) == 0;
 }
 
+/* A cartridge in msx/roms, not a file there that overrides a built-in ROM */
+static bool is_cart(const char *name)
+{
+    const char *base = strrchr(name, '/');
+    return (has_ext(name, ".rom") || has_ext(name, ".mx1") || has_ext(name, ".mx2")) &&
+           !rom_store_is_rom(base ? base + 1 : name);
+}
+
 static bool accepts(int drive, const char *name)
 {
     switch (drive) {
     case DRIVE_HD: return has_ext(name, ".hdd") || has_ext(name, ".img");
-    case DRIVE_CART: return has_ext(name, ".rom") || has_ext(name, ".mx1") || has_ext(name, ".mx2");
+    case DRIVE_CART: return is_cart(name);
     default: return has_ext(name, ".dsk");
     }
 }
@@ -543,6 +551,7 @@ static bool write_protected(int drive)
 static const disks_config_t disks = {
     .folder = "msx",
     .extensions = extensions,
+    .cart_extensions = cart_extensions,
     .description = "Images (.DSK .HDD .ROM)",
     .title = "Drives and cartridge",
     .button = "Disks",

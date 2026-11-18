@@ -21,8 +21,8 @@ The MSX1 needs `msx.rom`; the MSX2 `msx2.rom` and `msx2ext.rom`. Without
 Other 50 Hz or 60 Hz BIOS versions work too: the video frequency follows
 the BIOS.
 
-Without flashing, the emulator also finds them in the `msx/roms` folder on
-the SD card under the same names (any case). A card set up before
-2026-11-17 has them in a shared `roms` folder: esp32emu's
+A file of the same name (any case) in the `msx/roms` folder on the SD card
+(with the cartridges) is used instead of the flashed one. A card set up
+before 2026-11-17 has such files in a shared `roms` folder: esp32emu's
 `tools/sd_folders.ps1 E:\` (PowerShell 7, the card in a card reader) moves
 them there.

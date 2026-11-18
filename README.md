@@ -143,10 +143,10 @@ idf.py -B build-tab5 -DIDF_TARGET=esp32p4 -DSDKCONFIG=build-tab5/sdkconfig build
 idf.py -B build-tab5 -DIDF_TARGET=esp32p4 -DSDKCONFIG=build-tab5/sdkconfig -p /dev/cu.usbmodem… flash
 ```
 
-Later updates only need `idf.py -p … app-flash`. Instead of flashing the
-ROMs, you can also copy them into the `msx/roms` folder on the SD card. A
-card set up before 2026-11-17 has them in a shared `roms` folder:
-esp32emu's `tools/sd_folders.ps1` moves them.
+Later updates only need `idf.py -p … app-flash`. A ROM file of the same
+name in the `msx/roms` folder on the SD card (with the cartridges) is used
+instead of the flashed one. A card set up before 2026-11-18 has its ROMs
+and cartridges elsewhere: esp32emu's `tools/sd_folders.ps1` moves them.
 
 ### 3. First start
 
@@ -171,8 +171,8 @@ esp32emu's `tools/sd_folders.ps1` moves them.
 | Make a new floppy | **New** next to a floppy drive, or on the web page: a formatted 720 KB disk |
 | Copy files from a computer | Drop them onto the web page (ZIP files are unpacked), or `curl -T game.rom http://msx.local/disks/` |
 
-Images live in the `msx` folder on the SD card. The inserted ones are
-remembered across restarts.
+Disk images live in the `msx` folder on the SD card, cartridges in
+`msx/roms`. The inserted ones are remembered across restarts.
 
 **Keyboard**: by position, the international MSX layout on a US keyboard:
 Ctrl, Shift and Caps Lock as themselves, left Alt GRAPH, right Alt CODE,

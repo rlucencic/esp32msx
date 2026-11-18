@@ -4,9 +4,10 @@
 #include <stdint.h>
 
 /*
- * The MSX ROMs: from the msx_roms flash partition (roms/<name> in the
- * project, written by idf.py flash into 16 KB slots), else from the SD
- * card's "msx/roms" folder under the same names.
+ * The MSX ROMs: built in, from the msx_roms flash partition (roms/<name>
+ * in the project, written by idf.py flash into 16 KB slots). A file of the
+ * same name in the SD card's "msx/roms" folder (the cartridges' folder)
+ * overrides one.
  */
 typedef enum {
     ROM_MSX1,                   /* msx.rom: MSX1 BIOS + BASIC, 32 KB */
@@ -22,3 +23,6 @@ uint32_t rom_store_size(rom_id_t id);
 
 /* The whole ROM into buf; false if there's none */
 bool rom_store_load(rom_id_t id, uint8_t *buf);
+
+/* A built-in ROM's file name: an override, not a cartridge */
+bool rom_store_is_rom(const char *name);
