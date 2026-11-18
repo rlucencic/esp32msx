@@ -135,6 +135,19 @@ void scc_write(uint16_t addr, uint8_t v)
     push_event(EV_SCC + r, v, 0);
 }
 
+/* For the web page: the registers as the program wrote them */
+void msx_get_sound(msx_sound_t *s)
+{
+    memcpy(s->ay, ay.reg, sizeof(s->ay));
+    s->scc = cart_scc();
+    for (int c = 0; c < 5; c++) {
+        s->scc_freq[c] = ay.scc[0x80 + c * 2] | ((ay.scc[0x81 + c * 2] & 15) << 8);
+        s->scc_volume[c] = ay.scc[0x8A + c] & 15;
+    }
+    s->scc_on = ay.scc[0x8F] & 0x1F;
+    s->click = msx.ppi_c & 0x80;
+}
+
 void click_write(bool level)
 {
     push_event(EV_CLICK, level, 0);

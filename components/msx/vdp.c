@@ -69,6 +69,7 @@ static struct {
     uint8_t pal_first;
     bool pal_second;
     uint16_t palette[16];       /* RGB565 */
+    uint16_t palette9[16];      /* as written: R, G, B of 0-7 (the web page) */
     uint16_t rgb332[256];       /* G7 */
     bool dirty;                 /* something shown changed since the last line drawn */
     bool draw;                  /* this frame's lines are being drawn */
@@ -118,6 +119,7 @@ static inline uint8_t vram_rd(uint32_t a)
 static void set_palette(int i, int r, int g, int b)
 {
     vdp.palette[i] = rgb565(r * 255 / 7, g * 255 / 7, b * 255 / 7);
+    vdp.palette9[i] = (r << 6) | (g << 3) | b;
 }
 
 void vdp_init(bool v9938, bool pal)
@@ -191,6 +193,23 @@ uint8_t vdp_reg(int r)
 uint8_t vdp_status_reg(int s)
 {
     return s >= 0 && s < 10 ? vdp.status[s] : 0xFF;
+}
+
+/* For the web page: copies (the emulation runs meanwhile) */
+void msx_get_video(msx_video_t *v)
+{
+    v->v9938 = vdp.v9938;
+    v->mode = mode();
+    memcpy(v->reg, vdp.reg, sizeof(v->reg));
+    for (int i = 0; i < 16; i++) {
+        if (vdp.v9938) {
+            unsigned c = vdp.palette9[i];
+            v->palette[i] = ((c >> 6) * 255 / 7) << 16 | (((c >> 3) & 7) * 255 / 7) << 8 | (c & 7) * 255 / 7;
+        } else {
+            v->palette[i] = (uint32_t)tms_rgb[i][0] << 16 | tms_rgb[i][1] << 8 | tms_rgb[i][2];
+        }
+    }
+    v->lines = vdp_lines();
 }
 
 static inline int active_lines(void)

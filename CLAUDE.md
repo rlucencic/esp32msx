@@ -49,6 +49,17 @@ bash -c '. $IDF_PATH/export.sh >/dev/null 2>&1; \
   with the IDF venv's Python (`-I`).
 - `curl http://msx.local/api/status`; disks `curl -T img http://msx.local/disks/`,
   `PUT /api/drive/<n>` (1 and 2 the floppies, 3 the hard disk, 4 the cartridge).
+- The web page's machine card (`status()`, `main/main.c`) shows the state
+  now: the Z80's interrupt mode, the slot in each page and what's there
+  (BIOS, BASIC, a mapper segment, a MegaROM's banks, SUB-ROM, disk ROM,
+  Nextor), the VDP's mode as its SCREEN with size, colours, page or name
+  table, border, sprites, line interrupt, the palette as swatches (the
+  V9938's as written, `palette9`), the AY's and the SCC's channels, the
+  CAPS lamp, the special keys, the joystick, the drives. The core's copies
+  for it: `msx_get_status()`, `msx_get_video()`, `msx_get_sound()`. The
+  whole reply has 4 KB (esp32emu's `STATUS_SIZE`); the rows' longest case
+  (an MSX2 with an SCC cartridge, all channels sounding) is ~1.8 KB of it,
+  measured on the host: keep them short.
   Inserting while the setup screen is open is refused: resume first.
 - Flashing restarts the board and ends the user's session: say so first.
 

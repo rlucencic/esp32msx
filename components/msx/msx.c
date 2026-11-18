@@ -529,4 +529,19 @@ void msx_get_status(msx_status_t *s)
     s->vdp_mode = vdp_mode();
     fdc_status(s);
     ide_status(s);
+    /* for the web page: plain copies (the emulation runs meanwhile) */
+    s->im = z80.im;
+    s->ei = z80.iff1;
+    for (int p = 0; p < 4; p++) {
+        int primary = (msx.ppi_a >> (p * 2)) & 3;
+        int secondary = msx.expanded[primary] ? (msx.sub[primary] >> (p * 2)) & 3 : 0;
+        const slot_t *slot = &slots[primary][secondary];
+        s->subslots[p] = msx.sub[p];
+        s->expanded |= msx.expanded[p] ? 1u << p : 0;
+        s->empty |= slot->rd[p * 2] == msx_unmapped && slot->rd[p * 2 + 1] == msx_unmapped ? 1u << p : 0;
+        s->mapper[p] = msx.mapper[p] % (msx.mapper_segments ? msx.mapper_segments : 1);
+    }
+    s->segments = msx.mapper_segments;
+    s->ppi_c = msx.ppi_c;
+    s->cart_bank_kb = cart_banks(s->cart_banks);
 }

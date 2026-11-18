@@ -269,3 +269,18 @@ const char *msx_cart_type(void)
 {
     return cart.rom ? type_names[cart.type] : NULL;
 }
+
+/* For the web page: a MegaROM's bank registers and their size */
+int cart_banks(uint8_t *banks)
+{
+    memcpy(banks, cart.bank, sizeof(cart.bank));
+    if (cart.rom == NULL || cart.type == CART_PLAIN) {
+        return 0;
+    }
+    return cart.type == CART_ASCII16 ? 16 : 8;
+}
+
+bool cart_scc(void)
+{
+    return cart.rom != NULL && cart.type == CART_KONAMI_SCC;
+}

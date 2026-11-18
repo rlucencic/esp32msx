@@ -599,23 +599,224 @@ static void every_second(void)
 
 /* ---- Status ---- */
 
+/* The web page's machine card: the state now, a short line a row. The
+ * whole /api/status reply has 4 KB (esp32emu's STATUS_SIZE), these rows
+ * at most ~1.8 KB of it: keep them short (an & goes out as &amp;).
+ */
+
+static size_t swatch(char *text, size_t size, uint32_t rgb)
+{
+    int n = snprintf(text, size, "<b style=\"background:#%06lx\">&nbsp;&nbsp;&nbsp;</b> ",
+                     (unsigned long)(rgb & 0xFFFFFF));
+    return n < 0 ? 0 : (size_t)n < size ? (size_t)n : size - 1;
+}
+
+/* What's in page p (0-3) now: the slots as msx.h lists them */
+static void page_text(char *text, size_t size, const msx_status_t *s, int p)
+{
+    int primary = (s->slots >> (p * 2)) & 3;
+    int secondary = (s->subslots[primary] >> (p * 2)) & 3;
+    char slot[8], what[32];
+    if (s->expanded & (1u << primary)) {
+        snprintf(slot, sizeof(slot), "%d-%d", primary, secondary);
+    } else {
+        snprintf(slot, sizeof(slot), "%d", primary);
+        secondary = 0;
+    }
+    if (s->empty & (1u << p)) {
+        snprintf(what, sizeof(what), "nothing");
+    } else if (primary == 0) {
+        snprintf(what, sizeof(what), p == 0 ? "BIOS" : "BASIC");
+    } else if (primary == 1) {
+        if (s->cart_bank_kb == 16 && (p == 1 || p == 2)) {
+            snprintf(what, sizeof(what), "cartridge bank %u", s->cart_banks[p - 1]);
+        } else if (s->cart_bank_kb == 8 && (p == 1 || p == 2)) {
+            snprintf(what, sizeof(what), "cartridge banks %u, %u", s->cart_banks[(p - 1) * 2],
+                     s->cart_banks[(p - 1) * 2 + 1]);
+        } else {
+            snprintf(what, sizeof(what), "cartridge");
+        }
+    } else if (primary == 2) {
+        snprintf(what, sizeof(what), "Nextor");
+    } else if (secondary == 0) {
+        if (s->segments > 4) {
+            snprintf(what, sizeof(what), "RAM segment %u", s->mapper[p]);
+        } else {
+            snprintf(what, sizeof(what), "RAM");
+        }
+    } else {
+        snprintf(what, sizeof(what), secondary == 1 ? "SUB-ROM" : "disk ROM");
+    }
+    snprintf(text, size, "%s (%s)", what, slot);
+}
+
+/* The AY's channels (its clock 1.79 MHz) and the SCC's as they sound now */
+static void sound_text(char *text, size_t size)
+{
+    msx_sound_t snd;
+    msx_get_sound(&snd);
+    const uint8_t *r = snd.ay;
+    const uint32_t clock = MSX_CLOCK_HZ / 2;
+    size_t n = 0;
+    bool envelope = false;
+    for (int c = 0; c < 3 && n < size; c++) {
+        bool tone = !(r[7] & (1 << c)), noise = !(r[7] & (8 << c));
+        unsigned volume = r[8 + c] & 31;
+        if (volume == 0) {
+            continue;
+        }
+        unsigned period = r[c * 2] | ((r[c * 2 + 1] & 15) << 8);
+        char what[40];
+        if (tone) {
+            snprintf(what, sizeof(what), "%lu Hz%s", (unsigned long)(clock / (16 * (period ? period : 1))),
+                     noise ? " + noise" : "");
+        } else {
+            snprintf(what, sizeof(what), noise ? "noise" : "a fixed level");
+        }
+        char level[16];
+        snprintf(level, sizeof(level), "volume %u", volume);
+        n += snprintf(text + n, size - n, "%s%c %s, %s", n ? "; " : "AY: ", 'A' + c, what,
+                      (volume & 16) ? "envelope" : level);
+        envelope |= volume & 16;
+    }
+    if (n == 0) {
+        n = snprintf(text, size, "AY silent");
+    }
+    if (envelope && n < size) {
+        /* one sweep of the envelope: 256 x its period in AY cycles */
+        unsigned period = r[11] | (r[12] << 8);
+        uint64_t ms = (256ull * (period ? period : 1) * 1000 + clock / 2) / clock;
+        n += snprintf(text + n, size - n, "; envelope shape %u, %lu ms", r[13] & 15, (unsigned long)ms);
+    }
+    if (!snd.scc) {
+        return;
+    }
+    /* the SCC: a 32-step waveform each, the clock / (32 x (period + 1)); below 9 silent */
+    bool any = false;
+    for (int c = 0; c < 5 && n < size; c++) {
+        if ((snd.scc_on & (1 << c)) && snd.scc_volume[c] && snd.scc_freq[c] >= 9) {
+            n += snprintf(text + n, size - n, "%s%d %lu Hz", any ? ", " : "; SCC: ", c + 1,
+                          (unsigned long)(MSX_CLOCK_HZ / (32ul * (snd.scc_freq[c] + 1))));
+            any = true;
+        }
+    }
+    if (!any && n < size) {
+        snprintf(text + n, size - n, "; SCC silent");
+    }
+}
+
 static void status(emu_json_t *j, int section)
 {
-    char text[160];
+    char text[300];
     msx_status_t s;
     msx_get_status(&s);
     if (section == EMU_STATUS_ROWS) {
-        snprintf(text, sizeof(text), "%s, %u KB, %s, floppy drives %s", model_names[settings.model],
-                 (unsigned)(s_started ? s_cfg.ram_kb : settings.model == MSX_MODEL_MSX2 ? settings.ram_kb : 64),
-                 video_names[settings.video], settings.floppy ? "on" : "off");
+        bool msx2 = s_cfg.model == MSX_MODEL_MSX2;
+        msx_video_t v;
+        msx_get_video(&v);
+        int hz = v.lines == 313 ? 50 : 60;
+        char memory[24];
+        snprintf(memory, sizeof(memory), msx2 ? "a %u KB memory mapper" : "%u KB RAM", (unsigned)s_cfg.ram_kb);
+        snprintf(text, sizeof(text), "%s: a Z80A at 3.58 MHz (IM %u, interrupts %s), %s, %s; %d Hz",
+                 msx2 ? "MSX2" : "MSX1", s.im, s.ei ? "on" : "off", memory,
+                 msx2 ? "a V9938, 128 KB VRAM" : hz == 50 ? "a TMS9929A" : "a TMS9918A", hz);
         emu_json_row(j, "System", text);
-        emu_json_row(j, "ROMs", s_rom_text);
-        if (msx_cart_type()) {
-            emu_json_row(j, "Cartridge", msx_cart_type());
+        emu_json_row(j, "ROM", s_rom_text);
+
+        /* the four pages of 16 KB: the slot each is in, and what's there */
+        size_t n = (size_t)snprintf(text, sizeof(text), "Pages 0-3: ");
+        for (int p = 0; p < 4 && n < sizeof(text); p++) {
+            n += snprintf(text + n, sizeof(text) - n, "%s", p ? ", " : "");
+            page_text(text + n, sizeof(text) - n, &s, p);
+            n += strlen(text + n);
         }
-        snprintf(text, sizeof(text), "port %d on the numeric keypad%s (F11 switches)", settings.joystick,
-                 s_arrows_joystick ? " and cursor keys" : "");
+        emu_json_row(j, "Memory", text);
+
+        /* the VDP: its mode (M1-M5) is the BASIC's SCREEN */
+        static const struct {
+            uint8_t mode, screen;
+            const char *text;
+        } screens[] = {
+            { 0x01, 0, "Text 1: 40 × 24 characters, 2 colours" },
+            { 0x09, 0, "Text 2: 80 × 24 characters, 2 colours" },
+            { 0x00, 1, "Graphic 1: 32 × 24 characters, 16 colours" },
+            { 0x04, 2, "Graphic 2: 256 × 192, 16 colours" },
+            { 0x02, 3, "Multicolour: 64 × 48 blocks, 16 colours" },
+            { 0x08, 4, "Graphic 3: 256 × 192, 16 colours" },
+            { 0x0C, 5, "Graphic 4: 256 × %d, 16 of 512 colours" },
+            { 0x10, 6, "Graphic 5: 512 × %d, 4 of 512 colours" },
+            { 0x14, 7, "Graphic 6: 512 × %d, 16 of 512 colours" },
+            { 0x1C, 8, "Graphic 7: 256 × %d, 256 colours" },
+        };
+        int k = -1;
+        for (unsigned i = 0; i < sizeof(screens) / sizeof(screens[0]); i++) {
+            k = screens[i].mode == v.mode ? (int)i : k;
+        }
+        bool text_mode = v.mode == 0x01 || v.mode == 0x09, bitmap = v.mode >= 0x0C;
+        int lines = v.v9938 && (v.reg[9] & 0x80) ? 212 : 192;
+        char what[80], where[40], border[32];
+        if (k < 0) {
+            snprintf(what, sizeof(what), "Mode %02X (not a SCREEN)", v.mode);
+        } else {
+            char mode[64];
+            snprintf(mode, sizeof(mode), screens[k].text, lines);
+            snprintf(what, sizeof(what), "SCREEN %u (%s)", screens[k].screen, mode);
+        }
+        if (bitmap) {
+            snprintf(where, sizeof(where), "page %d", v.mode >= 0x14 ? (v.reg[2] >> 5) & 1 : (v.reg[2] >> 5) & 3);
+        } else {
+            unsigned table = (v.reg[2] & (v.mode == 0x09 ? 0x7C : v.v9938 ? 0x7F : 0x0F)) << 10;
+            snprintf(where, sizeof(where), "names at &amp;H%04X", table);
+        }
+        if (text_mode) {
+            snprintf(border, sizeof(border), "text %u on %u", v.reg[7] >> 4, v.reg[7] & 15);
+        } else {
+            snprintf(border, sizeof(border), "border %u", v.mode == 0x1C ? v.reg[7] : v.reg[7] & 15);
+        }
+        char sprites[40] = "";
+        if (!text_mode) {
+            snprintf(sprites, sizeof(sprites), "; sprites %s", v.v9938 && (v.reg[8] & 0x02) ? "off" :
+                     (v.reg[1] & 2) ? ((v.reg[1] & 1) ? "16 × 16, magnified" : "16 × 16") :
+                     (v.reg[1] & 1) ? "8 × 8, magnified" : "8 × 8");
+        }
+        char extra[64] = "";
+        n = 0;
+        if (!(v.reg[1] & 0x40)) {
+            n += snprintf(extra + n, sizeof(extra) - n, "; display off");
+        }
+        if (v.v9938 && (v.reg[0] & 0x10) && n < sizeof(extra)) {
+            n += snprintf(extra + n, sizeof(extra) - n, "; line interrupt at %u", v.reg[19]);
+        }
+        if (v.v9938 && (v.reg[9] & 0x08) && n < sizeof(extra)) {
+            snprintf(extra + n, sizeof(extra) - n, "; interlaced");
+        }
+        snprintf(text, sizeof(text), "%s; %s; %s%s%s", what, where, border, sprites, extra);
+        emu_json_row(j, "Screen", text);
+
+        /* the 16 colours (SCREEN 8's 256 are fixed) */
+        static char swatches[1000];
+        if (v.mode == 0x1C) {
+            snprintf(swatches, sizeof(swatches), "SCREEN 8: 256 fixed colours (green 3 bits, red 3, blue 2)");
+        } else {
+            n = (size_t)snprintf(swatches, sizeof(swatches), "%s0-15: ", v.v9938 ? "" : "Fixed, ");
+            for (int i = 0; i < 16; i++) {
+                n += swatch(swatches + n, sizeof(swatches) - n, v.palette[i]);
+            }
+        }
+        emu_json_row(j, "Palette", swatches);
+
+        sound_text(text, sizeof(text));
+        emu_json_row(j, "Sound", text);
+        snprintf(text, sizeof(text), "By position; left Alt GRAPH, right Alt CODE, F6-F10 SHIFT F1-F5, End STOP, "
+                 "Page Up SELECT, the ISO key the dead key; CAPS lamp %s", (s.ppi_c & 0x40) ? "off" : "on");
+        emu_json_row(j, "Keyboard", text);
+        snprintf(text, sizeof(text), "Port %d: the keypad%s; F11 port %d; F12 %s", settings.joystick,
+                 s_arrows_joystick ? " and cursor keys (0, 5, Alt A; ., AltGr B)" : " (0, 5 A; . B)",
+                 3 - settings.joystick, s_arrows_joystick ? "off" : "the cursor keys too");
         emu_json_row(j, "Joystick", text);
+        snprintf(text, sizeof(text), "%s; Sunrise IDE, Nextor: the hard disk A:",
+                 s_cfg.disk_rom ? "WD2793, two drives: .DSK (360, 720 KB)" : "No floppy drives (Floppy Off)");
+        emu_json_row(j, "Disks", text);
         return;
     }
     for (int d = 0; d < DRIVES; d++) {

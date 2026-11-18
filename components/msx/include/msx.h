@@ -124,5 +124,37 @@ typedef struct {
     bool floppy_busy[MSX_FLOPPIES];
     uint32_t hd_reads, hd_writes;
     bool hd_busy;
+    /* For the web page (copies, read while the emulation runs): */
+    uint8_t im;                 /* the Z80's interrupt mode */
+    bool ei;                    /* ... its interrupts enabled (IFF1) */
+    uint8_t subslots[4];        /* the secondary slot registers ($FFFF of each slot) */
+    uint8_t expanded;           /* bit n: slot n is expanded */
+    uint8_t empty;              /* bit n: nothing in page n's slot */
+    uint8_t mapper[4];          /* MSX2: the mapper's segment in each page */
+    uint16_t segments;          /* ... its 16 KB segments */
+    uint8_t ppi_c;              /* PPI port C: keyboard row, CAPS lamp (bit 6, 0: on), click */
+    uint8_t cart_bank_kb;       /* a MegaROM's banks: 8 or 16 KB; 0 none */
+    uint8_t cart_banks[4];      /* ... at $4000, $6000, $8000, $A000 (16 KB: $4000, $8000) */
 } msx_status_t;
 void msx_get_status(msx_status_t *s);
+
+/* For the web page: the video chip's registers and palette now */
+typedef struct {
+    bool v9938;
+    uint8_t mode;               /* M1-M5 as the console's "VDP mode" */
+    uint8_t reg[24];            /* R#0-R#23 */
+    uint32_t palette[16];       /* 0xRRGGBB */
+    int lines;                  /* a frame's: 262 (60 Hz) or 313 (50 Hz) */
+} msx_video_t;
+void msx_get_video(msx_video_t *v);
+
+/* For the web page: the sound chips' registers now */
+typedef struct {
+    uint8_t ay[14];             /* the AY-3-8910's registers 0-13 */
+    bool scc;                   /* an SCC cartridge is in */
+    uint16_t scc_freq[5];       /* its channels' periods (12 bits) */
+    uint8_t scc_volume[5];
+    uint8_t scc_on;             /* bits 0-4: channels on */
+    bool click;                 /* the key click's level */
+} msx_sound_t;
+void msx_get_sound(msx_sound_t *s);

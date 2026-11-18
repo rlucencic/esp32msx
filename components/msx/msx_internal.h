@@ -101,6 +101,8 @@ void ide_status(msx_status_t *s);
 bool cart_present(void);
 void cart_setup(slot_t *slot);
 void cart_reset(void);
+int cart_banks(uint8_t *banks);     /* a MegaROM's 4 bank registers; their size in KB, 0: none */
+bool cart_scc(void);                /* an SCC cartridge is in */
 
 /* rtc.c: RP5C01 */
 void rtc_reset(void);
