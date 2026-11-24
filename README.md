@@ -267,6 +267,10 @@ options and the lessons learned along the way.
 - Floppies are quicker than a real drive: a sector is there as soon as it's
   asked for.
 
+## Roadmap
+
+See [TODO.md](TODO.md) for proposed work and how to verify it.
+
 ## Credits
 
 - [openMSX](https://openmsx.org): the reference for the Sunrise IDE and many
